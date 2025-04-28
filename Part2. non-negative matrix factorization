@@ -1,0 +1,471 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "f6286da7",
+   "metadata": {
+    "_cell_guid": "b1076dfc-b9ad-4769-8c92-a6c4dae69d19",
+    "_uuid": "8f2839f25d086af736a60e9eeb907d3b93b6e0e5",
+    "execution": {
+     "iopub.execute_input": "2025-04-28T21:15:36.479487Z",
+     "iopub.status.busy": "2025-04-28T21:15:36.479018Z",
+     "iopub.status.idle": "2025-04-28T21:15:36.491030Z",
+     "shell.execute_reply": "2025-04-28T21:15:36.489858Z"
+    },
+    "papermill": {
+     "duration": 0.019622,
+     "end_time": "2025-04-28T21:15:36.493379",
+     "exception": false,
+     "start_time": "2025-04-28T21:15:36.473757",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "/kaggle/input/movies-data/movies.csv\n",
+      "/kaggle/input/movies-data/users.csv\n",
+      "/kaggle/input/movies-data/train.csv\n",
+      "/kaggle/input/movies-data/test.csv\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Input data \n",
+    "import os\n",
+    "for dirname, _, filenames in os.walk('/kaggle/input'):\n",
+    "    for filename in filenames:\n",
+    "        print(os.path.join(dirname, filename))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "id": "039a4ae9",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-04-28T21:15:36.501977Z",
+     "iopub.status.busy": "2025-04-28T21:15:36.501623Z",
+     "iopub.status.idle": "2025-04-28T21:15:39.417398Z",
+     "shell.execute_reply": "2025-04-28T21:15:39.416215Z"
+    },
+    "papermill": {
+     "duration": 2.922408,
+     "end_time": "2025-04-28T21:15:39.419682",
+     "exception": false,
+     "start_time": "2025-04-28T21:15:36.497274",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "import pandas as pd\n",
+    "import matplotlib.pyplot as plt\n",
+    "import numpy as np\n",
+    "from sklearn.decomposition import NMF\n",
+    "from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score, f1_score, ConfusionMatrixDisplay\n",
+    "from scipy.sparse import coo_matrix, csr_matrix\n",
+    "from collections import namedtuple\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "id": "3b459f57",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-04-28T21:15:39.428450Z",
+     "iopub.status.busy": "2025-04-28T21:15:39.427886Z",
+     "iopub.status.idle": "2025-04-28T21:15:39.432678Z",
+     "shell.execute_reply": "2025-04-28T21:15:39.431390Z"
+    },
+    "papermill": {
+     "duration": 0.011163,
+     "end_time": "2025-04-28T21:15:39.434531",
+     "exception": false,
+     "start_time": "2025-04-28T21:15:39.423368",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "file_path1 = '/kaggle/input/movies-data/users.csv'\n",
+    "file_path2 = '/kaggle/input/movies-data/movies.csv'\n",
+    "file_path3 ='/kaggle/input/movies-data/train.csv'\n",
+    "file_path4 ='/kaggle/input/movies-data/test.csv'"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "320717f7",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-04-28T21:15:39.443225Z",
+     "iopub.status.busy": "2025-04-28T21:15:39.442884Z",
+     "iopub.status.idle": "2025-04-28T21:15:39.941720Z",
+     "shell.execute_reply": "2025-04-28T21:15:39.940666Z"
+    },
+    "papermill": {
+     "duration": 0.506121,
+     "end_time": "2025-04-28T21:15:39.944480",
+     "exception": false,
+     "start_time": "2025-04-28T21:15:39.438359",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "MV_users = pd.read_csv(file_path1)\n",
+    "MV_movies =pd.read_csv(file_path2)\n",
+    "train = pd.read_csv(file_path3)\n",
+    "test = pd.read_csv(file_path4)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "id": "6574af6f",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-04-28T21:15:39.953997Z",
+     "iopub.status.busy": "2025-04-28T21:15:39.953612Z",
+     "iopub.status.idle": "2025-04-28T21:15:39.958634Z",
+     "shell.execute_reply": "2025-04-28T21:15:39.957434Z"
+    },
+    "papermill": {
+     "duration": 0.011174,
+     "end_time": "2025-04-28T21:15:39.960309",
+     "exception": false,
+     "start_time": "2025-04-28T21:15:39.949135",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "from collections import namedtuple\n",
+    "Data = namedtuple('Data', ['users','movies','train','test'])\n",
+    "data = Data(MV_users, MV_movies, train, test)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "id": "6aadca95",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-04-28T21:15:39.968914Z",
+     "iopub.status.busy": "2025-04-28T21:15:39.968506Z",
+     "iopub.status.idle": "2025-04-28T21:15:39.981420Z",
+     "shell.execute_reply": "2025-04-28T21:15:39.979957Z"
+    },
+    "papermill": {
+     "duration": 0.01947,
+     "end_time": "2025-04-28T21:15:39.983494",
+     "exception": false,
+     "start_time": "2025-04-28T21:15:39.964024",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "class RecSys():\n",
+    "    def __init__(self,data):\n",
+    "        self.data=data\n",
+    "        self.allusers = list(self.data.users['uID'])\n",
+    "        self.allmovies = list(self.data.movies['mID'])\n",
+    "        self.genres = list(self.data.movies.columns.drop(['mID', 'title', 'year']))\n",
+    "        self.mid2idx = dict(zip(self.data.movies.mID,list(range(len(self.data.movies)))))\n",
+    "        self.uid2idx = dict(zip(self.data.users.uID,list(range(len(self.data.users)))))\n",
+    "        self.Mr=self.rating_matrix()\n",
+    "        self.Mm=None \n",
+    "        self.sim=np.zeros((len(self.allmovies),len(self.allmovies)))\n",
+    "        \n",
+    "    def rating_matrix(self):\n",
+    "        \"\"\"\n",
+    "        Convert the rating matrix to numpy array of shape (#allusers,#allmovies)\n",
+    "        \"\"\"\n",
+    "        ind_movie = [self.mid2idx[x] for x in self.data.train.mID] \n",
+    "        ind_user = [self.uid2idx[x] for x in self.data.train.uID]\n",
+    "        rating_train = list(self.data.train.rating)\n",
+    "        \n",
+    "        return np.array(coo_matrix((rating_train, (ind_user, ind_movie)), shape=(len(self.allusers), len(self.allmovies))).toarray())\n",
+    "\n",
+    "    def rmse(self,yp):\n",
+    "        yp[np.isnan(yp)]=3 #In case there is nan values in prediction, it will impute to 3.\n",
+    "        yt=np.array(self.data.test.rating)\n",
+    "        return np.sqrt(((yt-yp)**2).mean())\n",
+    "    \n",
+    "    def factorization(self):\n",
+    "        \n",
+    "\n",
+    "        result = np.zeros((self.data.test.shape[0],))\n",
+    "        \n",
+    "        ratings = self.Mr.copy()\n",
+    "        ratings[ratings==0] = 3\n",
+    "        \n",
+    "        nmf_model = NMF(n_components=25, random_state=0, init='random')\n",
+    "        W = nmf_model.fit_transform(ratings)\n",
+    "        H = nmf_model.components_\n",
+    "        \n",
+    "        predicted_ratings = np.dot(W, H)\n",
+    "\n",
+    "        scaler = MinMaxScaler(feature_range=(1, 5.5))\n",
+    "        scaler.fit(predicted_ratings)\n",
+    "        predicted_ratings = scaler.transform(predicted_ratings)\n",
+    "        \n",
+    "        for i in range(self.data.test.shape[0]):\n",
+    "            pred = predicted_ratings[self.uid2idx[self.data.test[\"uID\"][i]]][self.mid2idx[self.data.test[\"mID\"][i]]]\n",
+    "            result[i] = pred\n",
+    "\n",
+    "        #print(self.data.test)  \n",
+    "        #print(result)\n",
+    "        \n",
+    "        return result"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "id": "dd5e4bc9",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-04-28T21:15:39.992428Z",
+     "iopub.status.busy": "2025-04-28T21:15:39.991954Z",
+     "iopub.status.idle": "2025-04-28T21:17:30.953435Z",
+     "shell.execute_reply": "2025-04-28T21:17:30.951693Z"
+    },
+    "papermill": {
+     "duration": 110.96925,
+     "end_time": "2025-04-28T21:17:30.956328",
+     "exception": false,
+     "start_time": "2025-04-28T21:15:39.987078",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Perform NMF on ratings matrix\n",
+    "rs = RecSys(data)\n",
+    "ratingsMatrix = rs.Mr\n",
+    "model = NMF(n_components = 18, random_state = 42, init=\"nndsvda\", solver=\"mu\", beta_loss=\"kullback-leibler\", max_iter=1000).fit(ratingsMatrix)\n",
+    "W = model.transform(ratingsMatrix)\n",
+    "H = model.components_\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "id": "5573880c",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-04-28T21:17:30.965439Z",
+     "iopub.status.busy": "2025-04-28T21:17:30.964777Z",
+     "iopub.status.idle": "2025-04-28T21:17:31.003394Z",
+     "shell.execute_reply": "2025-04-28T21:17:31.002064Z"
+    },
+    "papermill": {
+     "duration": 0.045826,
+     "end_time": "2025-04-28T21:17:31.006168",
+     "exception": false,
+     "start_time": "2025-04-28T21:17:30.960342",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "(6040, 3883)"
+      ]
+     },
+     "execution_count": 8,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# Reconstruct user data as predictions from NMF\n",
+    "X = model.inverse_transform(W)\n",
+    "X.shape"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "id": "47c28288",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-04-28T21:17:31.015172Z",
+     "iopub.status.busy": "2025-04-28T21:17:31.014729Z",
+     "iopub.status.idle": "2025-04-28T21:17:42.410820Z",
+     "shell.execute_reply": "2025-04-28T21:17:42.409425Z"
+    },
+    "papermill": {
+     "duration": 11.403425,
+     "end_time": "2025-04-28T21:17:42.413544",
+     "exception": false,
+     "start_time": "2025-04-28T21:17:31.010119",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Adapt the predict method of RecSys() to make predictions from the reconstructed user data, rather than the using the baseline / imputation methods.\n",
+    "yhat = []\n",
+    "n_test = len(rs.data.test)\n",
+    "for i in range(n_test):\n",
+    "    x = rs.data.test.iloc[i]\n",
+    "    mid = x.mID\n",
+    "    uid = x.uID\n",
+    "    yhat.append(X[rs.uid2idx[uid],rs.mid2idx[mid]])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "id": "5c7f275a",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-04-28T21:17:42.422208Z",
+     "iopub.status.busy": "2025-04-28T21:17:42.421832Z",
+     "iopub.status.idle": "2025-04-28T21:17:42.464931Z",
+     "shell.execute_reply": "2025-04-28T21:17:42.463746Z"
+    },
+    "papermill": {
+     "duration": 0.049627,
+     "end_time": "2025-04-28T21:17:42.466902",
+     "exception": false,
+     "start_time": "2025-04-28T21:17:42.417275",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "The RMSE of the predictions made using NMF was: 2.8850867946900713\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Adapt the rmse method of RecSys()\n",
+    "yhat = np.asarray(yhat)\n",
+    "yhat[np.isnan(yhat)] = 3 \n",
+    "labs = np.array(rs.data.test.rating)\n",
+    "RMSE = np.sqrt(((labs-yhat)**2).mean())\n",
+    "\n",
+    "print(\"The RMSE of the predictions made using NMF was:\", RMSE)\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "eddd9c33",
+   "metadata": {
+    "papermill": {
+     "duration": 0.003408,
+     "end_time": "2025-04-28T21:17:42.473983",
+     "exception": false,
+     "start_time": "2025-04-28T21:17:42.470575",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "The Week 3 collaborative filtering models all achieved RMSEs below 1—even the simplest baseline of filling missing ratings with each user’s average performed markedly better than an RMSE of 2.885. Such a high error indicates serious shortcomings:\n",
+    "\n",
+    "Extreme sparsity: With so many missing entries, low-rank approximation methods struggle to recover the true underlying structure without large reconstruction errors.\n",
+    "\n",
+    "Low rating values: The small range of possible ratings magnifies random noise, further degrading factorization quality.\n",
+    "\n",
+    "KL-divergence loss limitations: Although KL-loss handles zero-heavy matrices better, it prevents the use of “nndsvd” initialization, which is ideal for sparse data and helps reduce error.\n",
+    "\n",
+    "\n",
+    "\n",
+    "To improve performance, consider pre-condensing the matrix before factorization—options include applying Truncated SVD or PCA to reduce dimensionality and noise prior to collaborative filtering."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "be771f56",
+   "metadata": {
+    "papermill": {
+     "duration": 0.003258,
+     "end_time": "2025-04-28T21:17:42.481036",
+     "exception": false,
+     "start_time": "2025-04-28T21:17:42.477778",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kaggle": {
+   "accelerator": "none",
+   "dataSources": [
+    {
+     "datasetId": 7252936,
+     "sourceId": 11568211,
+     "sourceType": "datasetVersion"
+    }
+   ],
+   "dockerImageVersionId": 30918,
+   "isGpuEnabled": false,
+   "isInternetEnabled": true,
+   "language": "python",
+   "sourceType": "notebook"
+  },
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.10.12"
+  },
+  "papermill": {
+   "default_parameters": {},
+   "duration": 130.302161,
+   "end_time": "2025-04-28T21:17:43.206007",
+   "environment_variables": {},
+   "exception": null,
+   "input_path": "__notebook__.ipynb",
+   "output_path": "__notebook__.ipynb",
+   "parameters": {},
+   "start_time": "2025-04-28T21:15:32.903846",
+   "version": "2.6.0"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
